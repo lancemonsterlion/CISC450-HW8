@@ -111,7 +111,62 @@ def send_message(sender_id, recipient_id, content):
 send_message(sender_id=1, recipient_id=2, content="Hey, how are you?")
 #  view friends
 #  view reviews
+# Function to view reviews by searching username
+def view_reviews_by_username(username):
+    # Search for the user by username
+    user = session.query(User).filter(User.user_name == username).first()
+    
+    if not user:
+        print(f"User '{username}' not found.")
+        return
+    
+    # Fetch all reviews written by the user
+    reviews = session.query(Review).filter(Review.user_id == user.user_id).all()
+    
+    if reviews:
+        print(f"Reviews by {username}:")
+        for review in reviews:
+            game_title = session.query(Game).filter(Game.game_id == review.game_id).first().title
+            print(f"Game: {game_title}")
+            print(f"Review Score: {review.review_score}")
+            print(f"Review: {review.review_body}\n")
+    else:
+        print(f"{username} has not written any reviews.")
 #  view list
+# Function to view lists and the games in them by searching username
+def view_lists_by_username(username):
+    # Search for the user by username
+    user = session.query(User).filter(User.user_name == username).first()
+    
+    if not user:
+        print(f"User '{username}' not found.")
+        return
+    
+    # Fetch all game lists created by the user, including the associated ListEntry and Game information
+    game_lists = session.query(GameList).filter(GameList.user_id == user.user_id).all()
+    
+    if game_lists:
+        print(f"Game Lists created by {username}:")
+
+        for game_list in game_lists:
+            # Display list details
+            print(f"\nList Name: {game_list.list_name}")
+            print(f"List Type: {game_list.list_type}")
+            print(f"Likes: {game_list.likes}")
+            
+            # Get the games in this list by joining ListEntry and Game
+            games_in_list = session.query(Game).join(ListEntry).filter(ListEntry.list_id == game_list.list_id).all()
+            
+            if games_in_list:
+                print("Games in this list:")
+                for game in games_in_list:
+                    print(f"- {game.title}")
+            else:
+                print("No games in this list.")
+            
+    else:
+        print(f"{username} has not created any game lists.")
+
 # search games
 def search_game_by_name(game_name):
     # Search for the game by name (case-insensitive search)
