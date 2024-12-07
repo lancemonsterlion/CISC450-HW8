@@ -76,6 +76,47 @@ def add_game_to_user_list(user, game_name):
         print(f"{game_name} has been added to the newly created list '{list_name}'.")
 
 #  create reviews
+def create_review(username):
+    # Step 1: Search for the user by username
+    user = session.query(User).filter(User.user_name == username).first()
+    
+    if not user:
+        print(f"User '{username}' not found.")
+        return
+    
+    # Step 2: Search for the game by its title
+    game_title = input("Enter the title of the game you want to review: ")
+    game = session.query(Game).filter(Game.title == game_title).first()
+    
+    if not game:
+        print(f"Game '{game_title}' not found.")
+        return
+    
+    # Step 3: Get the review score and review body from the user
+    try:
+        review_score = int(input("Enter your review score (1-10): "))
+        if review_score < 1 or review_score > 10:
+            print("Please enter a score between 1 and 10.")
+            return
+    except ValueError:
+        print("Invalid score. Please enter a number between 1 and 10.")
+        return
+    
+    review_body = input("Enter your review: ")
+
+    # Step 4: Create a new Review object
+    new_review = Review(
+        user_id=user.user_id,
+        game_id=game.game_id,
+        review_score=review_score,
+        review_body=review_body
+    )
+
+    # Step 5: Add the review to the session and commit it to the database
+    session.add(new_review)
+    session.commit()
+
+    print(f"Review for '{game_title}' successfully submitted!")
 
 
 #  view messages
