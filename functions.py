@@ -79,6 +79,36 @@ def add_game_to_user_list(user, game_name):
 
 
 #  view messages
+def send_message(sender_id, recipient_id, content):
+    """
+    Function to send a message from one user to another.
+    
+    Args:
+        sender_id (int): The ID of the user sending the message.
+        recipient_id (int): The ID of the user receiving the message.
+        content (str): The content of the message.
+    
+    Returns:
+        None
+    """
+    # Check if the users are friends (Optional, requires a friend relationship)
+    friend_relationship = session.query(FriendList).filter(
+        FriendList.requestor_id == sender_id,
+        FriendList.recipient_id == recipient_id,
+        FriendList.accepted == True
+    ).first()
+    
+    if friend_relationship:
+        # Create the message
+        new_message = Message(sender_id=sender_id, recipient_id=recipient_id, content=content)
+        session.add(new_message)
+        session.commit()
+        print("Message sent successfully!")
+    else:
+        print("You can only send messages to your friends.")
+
+# Example usage
+send_message(sender_id=1, recipient_id=2, content="Hey, how are you?")
 #  view friends
 #  view reviews
 #  view list
