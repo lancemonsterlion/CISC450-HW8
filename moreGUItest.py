@@ -18,6 +18,7 @@ class App:
         self.root = root
         self.logged_in_user = None
         
+        self.root.geometry("350x450")
         # Set up the initial login screen
         self.create_login_screen()
     
@@ -112,11 +113,19 @@ class App:
         self.add_game_button = tk.Button(self.root, text="Add Game to Library", command=self.add_game_to_library)
         self.add_game_button.pack(pady=10)
         
+        self.view_friends_button = tk.Button(self.root, text="View Friends List", command=self.view_friends_list)
+        self.view_friends_button.pack(pady=10)
+        
         self.add_friend_button = tk.Button(self.root, text="Add Friend", command=self.add_friend)
         self.add_friend_button.pack(pady=10)
         
+        self.check_pending_button = tk.Button(self.root, text="Check Pending Friend Requests", command=self.check_pending_requests)
+        self.check_pending_button.pack(pady=10)
+        
         self.view_messages_button = tk.Button(self.root, text="View Messages", command=self.view_messages)
         self.view_messages_button.pack(pady=10)
+        
+        
         
         self.logout_button = tk.Button(self.root, text="Log Out", command=self.logout)
         self.logout_button.pack(pady=20)
@@ -179,11 +188,101 @@ class App:
             add_game_to_library(self.logged_in_user.user_id, game_name, score)
             messagebox.showinfo("Success", f"Game '{game_name}' added to your library.")
 
+    def view_friends_list(self):
+        try:
+            # Query for friends where 'accepted' is True (both requestor and recipient)
+            friends = session.query(FriendList).filter(
+                FriendList.accepted == True,
+                (FriendList.requestor_id == self.logged_in_user.user_id) | 
+                (FriendList.recipient_id == self.logged_in_user.user_id)
+            ).all()
+            
+            if friends:
+                # Create a new window for the friends list
+                friends_window = tk.Toplevel(self.root)
+                friends_window.title("Your Friends List")
+                
+                for friend in friends:
+                    # Determine who is the friend (requestor or recipient)
+                    friend_id = friend.recipient_id if friend.requestor_id == self.logged_in_user.user_id else friend.requestor_id
+                    friend_user = session.query(User).filter_by(user_id=friend_id).first()
+                    
+                    # Display the friend's name and a remove button
+                    friend_label = tk.Label(friends_window, text=friend_user.user_name)
+                    friend_label.pack(pady=5)
+                    
+                    remove_button = tk.Button(friends_window, text="Remove Friend", command=lambda friend=friend: self.remove_friend(friend, friends_window))
+                    remove_button.pack(pady=5)
+            else:
+                messagebox.showinfo("No Friends", "You have no friends yet.")
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while fetching your friends list: {e}")
+    
+    def remove_friend(self, friend, friends_window):
+        # Remove the friend from the FriendList table
+        try:
+            # Delete the friend entry from FriendList table
+            session.delete(friend)
+            session.commit()
+            
+            # Close the friends window
+            friends_window.destroy()
+
+            # Recreate the main menu with updated list
+            messagebox.showinfo("Success", "Friend removed successfully.")
+            self.view_friends_list()  # Refresh friends list window
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while removing the friend: {e}")
+
     def add_friend(self):
         friend_username = tk.simpledialog.askstring("Add Friend", "Enter the username of the friend:")
         if friend_username:
             add_friend(self.logged_in_user.user_id, friend_username)
             messagebox.showinfo("Success", f"Friend request sent to {friend_username}.")
+
+    def check_pending_requests(self):
+        # Query for pending friend requests (requests where 'accepted' is False)
+        try:
+            pending_requests = session.query(FriendList).filter(FriendList.accepted == False, 
+                                                                FriendList.recipient_id == self.logged_in_user.user_id).all()
+            
+            if pending_requests:
+                # Create a new window for pending requests
+                pending_window = tk.Toplevel(self.root)
+                pending_window.title("Pending Friend Requests")
+                
+                for req in pending_requests:
+                    requestor = session.query(User).filter_by(user_id=req.requestor_id).first()
+                    
+                    request_label = tk.Label(pending_window, text=f"Request from {requestor.user_name}")
+                    request_label.pack(pady=5)
+                    
+                    accept_button = tk.Button(pending_window, text="Accept", 
+                                              command=lambda req=req: self.accept_friend_request(req, pending_window))
+                    accept_button.pack(pady=5)
+                
+            else:
+                messagebox.showinfo("Pending Friend Requests", "No pending friend requests.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+    
+    def accept_friend_request(self, request, pending_window):
+        try:
+            # Update the 'accepted' field to True for the friend request
+            request.accepted = True
+            session.commit()
+            
+            # Notify the user that the request was accepted
+            messagebox.showinfo("Friend Request Accepted", "You have accepted the friend request.")
+            
+            # Close the pending requests window
+            pending_window.destroy()
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while accepting the request: {e}")
+
 
     def view_messages(self):
         messages = generate_user_messages(self.logged_in_user.user_id)
