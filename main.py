@@ -78,26 +78,60 @@ def generate_user_library(user_id):
     except Exception as e:
         print(f"An error occurred: {e}")
         return []
-
-
-def change_password_plain(user_id):
+    
+## Add a game to the library 
+def add_game_to_library(user_id):
     try:
-        # Fetch the user by user_id
-        current_password = input("Enter your current password: ")
-        new_password = input("Enter your new password: ")
-        user = session.query(User).filter_by(user_id=user_id).one()
+        # Prompt for game details
+        title = input("Enter the title of the game: ")
+        platform = input("Enter the platform (e.g., PC, PS5, Xbox): ")
+        genre = input("Enter the genre of the game (e.g., RPG, Action, Platformer): ")
         
-        # Verify the current password
-        if user.password != current_password:
-            print("The current password is incorrect.")
+        # Get the Metacritic score
+        while True:
+            try:
+                metacritic_score = int(input("Enter the Metacritic score of the game (0-100): "))
+                if 0 <= metacritic_score <= 100:
+                    break
+                else:
+                    print("Metacritic score must be between 0 and 100.")
+            except ValueError:
+                print("Please enter a valid integer.")
+
+
+        # Check if the game already exists in the database
+        existing_game = session.query(Game).filter_by(title=title, platform=platform).first()
+        if not existing_game:
+            # If the game doesn't exist, add it to the database
+            new_game = Game(
+                title=title,
+                platform=platform,
+                genre=genre,
+                metacritic_score=metacritic_score
+            )
+            session.add(new_game)
+            session.commit()
+            print(f"Game '{title}' added to the database.")
+            existing_game = new_game
+
+        # Check if the game is already in the user's library
+        existing_entry = session.query(UserLibrary).filter_by(user_id=user_id, game_id=existing_game.game_id).first()
+        if existing_entry:
+            print(f"The game '{title}' is already in your library.")
             return
-        
-        # Update the password
-        user.password = new_password
-        session.commit()  # Save changes
-        print("Password successfully updated.")
+
+        # Add the game to the user's library
+        new_entry = UserLibrary(
+            user_id=user_id,
+            game_id=existing_game.game_id,
+            user_score=user_score
+        )
+        session.add(new_entry)
+        session.commit()
+        print(f"Game '{title}' added to your library successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 def delete_user_account(user_id):
     try:
@@ -360,6 +394,7 @@ if logged_in_user:
                             print("Invalid option. Please try again.")
             case "3":
                 print("You selected option 3: Add game to Library")
+                add_game_to_library(logged_in_user.user_id)
             case "4":
                 print("You selected option 4: Add friend to friends list")
                 friend_name = input("Enter your friends username to add them to your friends list: ")
