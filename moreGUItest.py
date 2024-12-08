@@ -107,9 +107,6 @@ class App:
         self.view_library_button = tk.Button(self.root, text="View Library", command=self.view_library)
         self.view_library_button.pack(pady=10)
         
-        self.edit_profile_button = tk.Button(self.root, text="Edit Profile", command=self.edit_profile)
-        self.edit_profile_button.pack(pady=10)
-        
         self.add_game_button = tk.Button(self.root, text="Add Game to Library", command=self.add_game_to_library)
         self.add_game_button.pack(pady=10)
         
@@ -125,20 +122,50 @@ class App:
         self.view_messages_button = tk.Button(self.root, text="View Messages", command=self.view_messages)
         self.view_messages_button.pack(pady=10)
         
-        
+        self.edit_profile_button = tk.Button(self.root, text="Edit Profile", command=self.edit_profile)
+        self.edit_profile_button.pack(pady=10)
         
         self.logout_button = tk.Button(self.root, text="Log Out", command=self.logout)
         self.logout_button.pack(pady=20)
 
     def view_library(self):
-        # Generate and display the user's game library
+    # Generate and display the user's game library
         library = generate_user_library(self.logged_in_user.user_id)
         library_window = tk.Toplevel(self.root)
         library_window.title("Your Game Library")
-        
+
         for game in library:
-            game_label = tk.Label(library_window, text=f"{game['title']} (Platform: {game['platform']}, Score: {game['user_score']})")
-            game_label.pack(pady=5)
+            # Create a frame to hold the label and button in the same row
+            game_frame = tk.Frame(library_window)
+            game_frame.pack(pady=5, fill='x')
+
+            # Create a label displaying the game's information
+            game_label = tk.Label(game_frame, text=f"{game['title']} (Platform: {game['platform']}, Score: {game['user_score']})")
+            game_label.pack(side=tk.LEFT, padx=10)
+
+            # Create a delete button for each game, in the same row
+            delete_button = tk.Button(game_frame, text="Delete", command=lambda g=game: self.delete_game_from_library(g['game_id'], g['title'], library_window))
+            delete_button.pack(side=tk.RIGHT, padx=10)
+
+    def delete_game_from_library(self, game_id, game_name, library_window):
+        # Check if the game exists in the user's library and delete it
+        user_library_entry = session.query(UserLibrary).filter(
+            UserLibrary.user_id == self.logged_in_user.user_id,
+            UserLibrary.game_id == game_id
+        ).first()
+
+        if user_library_entry:
+            session.delete(user_library_entry)
+            session.commit()
+            messagebox.showinfo("Game Removed", f"Successfully removed {game_name} from your library.")
+            
+            # Update the library window by removing the deleted game's UI components
+            library_window.destroy()
+            self.view_library()  # Refresh the library window
+
+        else:
+            messagebox.showerror("Game Not Found", f"{game_name} is not in your library.")
+
         
     def edit_profile(self):
         # Allow the user to change their profile settings
