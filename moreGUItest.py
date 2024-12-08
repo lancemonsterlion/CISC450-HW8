@@ -26,7 +26,7 @@ class App:
         # Clear the window
         for widget in self.root.winfo_children():
             widget.destroy()
-        
+        self.root.title("Login")
         self.username_label = tk.Label(self.root, text="Username:")
         self.username_label.pack(pady=10)
         
@@ -62,7 +62,7 @@ class App:
         # Clear the window
         for widget in self.root.winfo_children():
             widget.destroy()
-        
+        self.root.title("Create New User")
         self.new_username_label = tk.Label(self.root, text="New Username:")
         self.new_username_label.pack(pady=10)
         
@@ -99,7 +99,7 @@ class App:
         # Clear the window
         for widget in self.root.winfo_children():
             widget.destroy()
-        
+        self.root.title("Main Menu")
         # Main menu with options
         self.menu_label = tk.Label(self.root, text=f"Welcome, {self.logged_in_user.user_name}")
         self.menu_label.pack(pady=10)
@@ -175,6 +175,7 @@ class App:
         # Clear the window
         for widget in self.root.winfo_children():
             widget.destroy()
+        self.root.title("Edit Profile")
         
         self.change_username_button = tk.Button(self.root, text="Change Username", command=self.change_username)
         self.change_username_button.pack(pady=10)
@@ -309,6 +310,7 @@ class App:
                 # Create a new window for pending requests
                 pending_window = tk.Toplevel(self.root)
                 pending_window.title("Pending Friend Requests")
+                pending_window.geometry("150x100")
                 
                 for req in pending_requests:
                     requestor = session.query(User).filter_by(user_id=req.requestor_id).first()
@@ -342,12 +344,39 @@ class App:
 
 
     def view_messages(self):
+        # Fetch all messages where the user is the sender or the recipient
         messages = generate_user_messages(self.logged_in_user.user_id)
+        
+        # Create a new top-level window for viewing messages
         library_window = tk.Toplevel(self.root)
         library_window.title("Your Messages")
+        
+        # Create frames for sent and received messages
+        sent_frame = tk.Frame(library_window)
+        sent_frame.pack(pady=10, padx=10, fill="both", expand=True)
+
+        received_frame = tk.Frame(library_window)
+        received_frame.pack(pady=10, padx=10, fill="both", expand=True)
+
+        # Label for Sent Messages (underlined and left-aligned)
+        sent_label = tk.Label(sent_frame, text="Sent Messages", font=("Helvetica", 12, "bold", "underline"), anchor="w")
+        sent_label.pack(anchor="w", fill="x")
+
+        # Label for Received Messages (underlined and left-aligned)
+        received_label = tk.Label(received_frame, text="Received Messages", font=("Helvetica", 12, "bold", "underline"), anchor="w")
+        received_label.pack(anchor="w", fill="x")
+
+        # Display Sent and Received Messages
         for message in messages:
-            message_label = tk.Label(library_window, text=f"Recipient: {message['recipient']}\nSender: {message['sender']}\nMessage: {message['content']}")
-            message_label.pack(pady=5)
+            if message["sender"] == self.logged_in_user.user_name:
+                # Sent Messages
+                message_label = tk.Label(sent_frame, text=f"To: {message['recipient']}\nMessage: {message['content']}", anchor="w", justify="left")
+                message_label.pack(pady=5, anchor="w", fill="x")
+            else:
+                # Received Messages
+                message_label = tk.Label(received_frame, text=f"From: {message['sender']}\nMessage: {message['content']}", anchor="w", justify="left")
+                message_label.pack(pady=5, anchor="w", fill="x")
+
     
     def logout(self):
         self.logged_in_user = None
@@ -446,7 +475,6 @@ def generate_user_messages(user_id):
  # Assuming there is a timestamp for when the message was sent
         }
         messages.append(message_details)
-    print(messages[0])
     
     return messages
 
