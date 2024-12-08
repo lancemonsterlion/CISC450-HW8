@@ -183,10 +183,34 @@ class App:
 
     def add_game_to_library(self):
         game_name = tk.simpledialog.askstring("Add Game", "Enter the name of the game:")
-        score = tk.simpledialog.askstring("Add Score", "Enter your score for the game:")
+        
+        
         if game_name:
-            add_game_to_library(self.logged_in_user.user_id, game_name, score)
-            messagebox.showinfo("Success", f"Game '{game_name}' added to your library.")
+            # Search for the game by its name
+            game = session.query(Game).filter(Game.title.ilike(game_name)).first()  # case-insensitive search
+            
+            if game:
+                # If the game exists, check if it is already in the user's library
+                existing_entry = session.query(UserLibrary).filter(
+                    UserLibrary.user_id == self.logged_in_user.user_id,
+                    UserLibrary.game_id == game.game_id
+                ).first()
+
+                if existing_entry:
+                    messagebox.showinfo("Game Already in Library", f"You already have {game_name} in your library.")
+                else:
+                    # If not in the library, add the game
+                    score = tk.simpledialog.askstring("Add Score", "Enter your score for the game:")
+                    user_score = float(score) if score.strip() else None
+                    
+                    # Add the game to the user's library
+                    new_entry = UserLibrary(user_id=self.logged_in_user.user_id, game_id=game.game_id, user_score=user_score)
+                    session.add(new_entry)
+                    session.commit()
+                    messagebox.showinfo("Game Added", f"Successfully added {game_name} to your library!")
+            else:
+                # If the game does not exist in the Games table
+                messagebox.showerror("Game Not Found", f"The game '{game_name}' was not found in the database.")
 
     def view_friends_list(self):
         try:
@@ -207,12 +231,18 @@ class App:
                     friend_id = friend.recipient_id if friend.requestor_id == self.logged_in_user.user_id else friend.requestor_id
                     friend_user = session.query(User).filter_by(user_id=friend_id).first()
                     
-                    # Display the friend's name and a remove button
-                    friend_label = tk.Label(friends_window, text=friend_user.user_name)
-                    friend_label.pack(pady=5)
+                    # Create a frame for the friend row (name and remove button in the same row)
+                    friend_frame = tk.Frame(friends_window)
+                    friend_frame.pack(pady=5, fill="x")  # fill="x" makes the frame take the full width
                     
-                    remove_button = tk.Button(friends_window, text="Remove Friend", command=lambda friend=friend: self.remove_friend(friend, friends_window))
-                    remove_button.pack(pady=5)
+                    # Label displaying the friend's name
+                    friend_label = tk.Label(friend_frame, text=friend_user.user_name, width=30, anchor="w")
+                    friend_label.pack(side="left", padx=10)  # Pack to the left
+                    
+                    # Button to remove the friend
+                    remove_button = tk.Button(friend_frame, text="Remove Friend", command=lambda friend=friend: self.remove_friend(friend, friends_window))
+                    remove_button.pack(side="right")  # Pack to the right
+
             else:
                 messagebox.showinfo("No Friends", "You have no friends yet.")
         
